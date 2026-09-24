@@ -1,0 +1,47 @@
+{
+  "name": "@foodapp/movil",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@foodapp/dominio": "^0.1.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.117.1",
+    "aes-js": "^3.1.2",
+    "expo": "~57.0.25",
+    "expo-constants": "~57.0.19",
+    "expo-linking": "~57.0.11",
+    "expo-router": "~57.0.23",
+    "expo-secure-store": "~57.0.4",
+    "expo-splash-screen": "~57.0.9",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-get-random-values": "~1.11.0",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-url-polyfill": "^4.0.0",
+    "react-native-web": "~0.21.0"
+  },
+  "devDependencies": {
+    "@types/aes-js": "^3.1.4",
+    "@types/node": "^22.20.4",
+    "@types/react": "~19.2.2",
+    "playwright": "1.56",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "node --test test/*.test.ts",
+    "export:web": "expo export --platform web",
+    "e2e:build": "EXPO_OFFLINE=1 EXPO_PUBLIC_SUPABASE_URL=https://ejemplo.supabase.co EXPO_PUBLIC_SUPABASE_KEY=clave-de-ejemplo expo export --platform web --output-dir dist-e2e",
+    "e2e": "npm run e2e:build && node e2e/recorrido.mjs dist-e2e",
+    "verificar:android": "EXPO_OFFLINE=1 EXPO_PUBLIC_SUPABASE_URL=https://ejemplo.supabase.co EXPO_PUBLIC_SUPABASE_KEY=clave-de-ejemplo expo export --platform android --output-dir dist-android"
+  },
+  "private": true
+}

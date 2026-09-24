@@ -1,6 +1,6 @@
 # Motor energético y nutricional
 
-Estado: [DIS] diseño propuesto; los cálculos descritos están implementados como [PROTO] en `prototipo/dominio/energia.ts` y `prototipo/dominio/nutricion.ts`, con pruebas en `prototipo/test/energia.test.ts`. Versión del método: `2026.1`.
+Estado: [DIS] diseño propuesto; los cálculos descritos están implementados como [PROTO] en `paquetes/dominio/src/energia.ts` y `paquetes/dominio/src/nutricion.ts`, con pruebas en `paquetes/dominio/test/energia.test.ts`. Versión del método: `2026.1`.
 
 Todos los resultados de este módulo son estimaciones poblacionales. No son una medición médica ni sustituyen la valoración de un profesional sanitario.
 

@@ -1,6 +1,6 @@
 # Modelo de datos
 
-Estado: [DIS] diseño propuesto. El esquema de referencia `db/schema.sql` se ha validado sobre PostgreSQL 16 con las pruebas de `db/test_rls.sql` (aislamiento entre usuarios, consumo parcial, rechazo de consumos superiores a lo disponible, control de concurrencia, inmutabilidad de movimientos, purga de cuenta). No está desplegado.
+Estado: fase F0. El esquema está en la migración `supabase/migrations/20260925000000_esquema_inicial.sql` y se prueba en integración continua sobre PostgreSQL 17 con `supabase/pruebas/` (alta de cuentas y edad mínima, consentimientos, aislamiento entre usuarios, privilegios, consumo parcial, rechazo de consumos superiores a lo disponible, control de concurrencia, inmutabilidad de movimientos, purga de cuenta). Todavía no está desplegado en un proyecto de Supabase.
 
 ## 1. Diagrama de relaciones
 
@@ -30,7 +30,7 @@ app_user 1---N audit_log
 | Libro de movimientos inmutable con `quantity_before` y `quantity_after`. | Trazabilidad completa y detección de conflictos de concurrencia: si `quantity_before` no coincide con la cantidad actual, el movimiento se rechaza (`CANTIDAD_DESACTUALIZADA`). |
 | `available_quantity` materializada en el lote y actualizada solo por disparador al insertar un movimiento. | Lecturas rápidas de la despensa sin sumar el historial, manteniendo la invariante `disponible = inicial + suma(deltas)`. |
 | Claves foráneas compuestas `(user_id, id)`. | Impiden por construcción que un lote de un usuario apunte a un producto o línea de ticket de otro, incluso ante un error del backend. |
-| `FORCE ROW LEVEL SECURITY` con políticas aplicadas a todos los roles. | El propietario de las tablas tampoco puede leer datos sin fijar `app.user_id`; solo el superusuario de migraciones omite RLS. |
+| Políticas RLS para el rol `authenticated` basadas en `auth.uid()`, sin acceso para `anon` y privilegios mínimos. | Supabase concede por defecto todos los privilegios sobre tablas nuevas, incluido `TRUNCATE`, que no respeta RLS; la migración los retira y concede solo lo necesario. Las funciones del sistema (alta de cuenta, purga) se ejecutan con `SECURITY DEFINER` en el esquema `app`, que la API no expone. |
 | Consumo y diario separados (`consumption_event` frente a `intake_entry`). | Lo que sale de la despensa no es necesariamente lo que come el usuario (regla de consumidor). |
 | `energy_estimate` como instantánea con `inputs` en JSON. | Reproducibilidad: se puede explicar cualquier objetivo pasado con los datos y la versión del método usados. |
 | Confianza por campo en `receipt_line.confidence` (JSON). | Cada campo (nombre, cantidad, importe) tiene su propia fiabilidad. |

@@ -1,6 +1,6 @@
 # Lectura de tickets y normalización de productos
 
-Estado: [DIS] diseño propuesto con el enfoque decidido en DEC-04 (`09-decisiones.md`). Las reglas de verificación de líneas (sección 3) existen como [PROTO] en `prototipo/dominio/ticket.ts` con pruebas en `prototipo/test/ticket.test.ts`. La captura, la llamada al modelo, la normalización y el aprendizaje de alias no están implementados.
+Estado: [DIS] diseño propuesto con el enfoque decidido en DEC-04 (`09-decisiones.md`). Las reglas de verificación de líneas (sección 3) existen como [PROTO] en `paquetes/dominio/src/ticket.ts` con pruebas en `paquetes/dominio/test/ticket.test.ts`. La captura, la llamada al modelo, la normalización y el aprendizaje de alias no están implementados.
 
 Principio: el sistema propone, el usuario confirma. Ninguna salida de este módulo crea existencias por sí misma (RN-INV-01). La lectura la hace un modelo multimodal; la aritmética y la confianza las decide el código propio.
 

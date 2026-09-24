@@ -22,7 +22,7 @@ Resumen:
 ## DEC-01 Aplicación móvil: React Native con Expo
 
 - **Decisión.** React Native con Expo (TypeScript), navegación con `expo-router`, base local con `expo-sqlite`, credenciales en `expo-secure-store`, cámara y escáner de documentos nativo, compilación y publicación en tiendas con EAS Build.
-- **Motivo.** Una sola base de código para iOS y Android. El núcleo de reglas ya está escrito y probado en TypeScript (`prototipo/`) y se reutiliza sin reescribirlo. Expo simplifica compilar y publicar sin mantener proyectos nativos a mano, lo que reduce la dependencia de especialistas.
+- **Motivo.** Una sola base de código para iOS y Android. El núcleo de reglas ya está escrito y probado en TypeScript (`paquetes/dominio/`) y se reutiliza sin reescribirlo. Expo simplifica compilar y publicar sin mantener proyectos nativos a mano, lo que reduce la dependencia de especialistas.
 - **Descartado.** Flutter (obligaría a reescribir el dominio en Dart); dos apps nativas (doble coste).
 - **Revisar si.** El escáner de documentos o el rendimiento de la cámara no alcanzan la calidad necesaria en dispositivos Android de gama baja.
 
@@ -30,10 +30,10 @@ Resumen:
 
 - **Decisión.** Supabase como plataforma gestionada: PostgreSQL con seguridad a nivel de fila, autenticación, almacenamiento de imágenes con URL firmadas y funciones de servidor (Edge Functions en TypeScript). Proyecto en la región de Fráncfort (UE).
 - **Reparto de la lógica.**
-  - Operaciones de inventario (confirmar ticket, consumir, cocinar, corregir): funciones de PostgreSQL llamadas por RPC, para que cada operación sea una única transacción. El esquema `db/schema.sql` ya está diseñado así.
+  - Operaciones de inventario (confirmar ticket, consumir, cocinar, corregir): funciones de PostgreSQL llamadas por RPC, para que cada operación sea una única transacción. El esquema de `supabase/migrations/` ya está diseñado así.
   - Lectura de tickets, exportación de datos, eliminación de cuenta y notificaciones: Edge Functions.
   - Sustituye al servicio NestJS propuesto en la versión 0.1: un servidor menos que mantener.
-- **Adaptación del esquema.** `app.current_user_id()` pasa a devolver `auth.uid()` y las políticas se aplican al rol `authenticated` de Supabase. Se hará en la migración inicial de la fase F0, manteniendo las pruebas de aislamiento.
+- **Adaptación del esquema.** Hecha en la fase F0: las políticas usan `auth.uid()` y se aplican al rol `authenticated`; se retiran los privilegios por defecto peligrosos (ver `04-modelo-de-datos.md`).
 - **Plan de servicio.** Plan de pago (Pro o superior) antes del lanzamiento: lo exige la protección de contraseñas filtradas y es necesario para copias con recuperación a un punto en el tiempo (complemento de pago). Para desarrollo basta el plan gratuito.
 - **Descartado.** Servidor propio (más mantenimiento y más riesgo de seguridad); Firebase (base de datos no relacional, poco adecuada para el libro de movimientos y sin seguridad a nivel de fila en SQL).
 - **Revisar si.** El coste mensual o los límites del plan dejan de ser razonables para el número de usuarios.
@@ -94,11 +94,11 @@ Resumen:
 ```
 apps/movil/          App Expo
 supabase/            Migraciones SQL, funciones de PostgreSQL, Edge Functions, pruebas de aislamiento
-paquetes/dominio/    Reglas de negocio compartidas (evolución de prototipo/dominio)
+paquetes/dominio/    Reglas de negocio compartidas (antes prototipo/)
 docs/                Especificación y decisiones
 ```
 
-- El prototipo actual se trasladará a `paquetes/dominio` al comenzar la fase F0, conservando sus pruebas.
+- Hecho en la fase F0: el prototipo está en `paquetes/dominio` con sus pruebas.
 
 ## DEC-09 Reglas de producto confirmadas
 

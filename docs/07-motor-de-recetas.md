@@ -1,6 +1,6 @@
 # Motor de recetas y recomendaciones
 
-Estado: [DIS] diseño propuesto. El filtro de seguridad, la clasificación de ingredientes y la puntuación existen como [PROTO] en `prototipo/dominio/recetas.ts` con pruebas en `prototipo/test/recetas.test.ts`. El catálogo de recetas, la generación asistida y la interfaz no están implementados.
+Estado: [DIS] diseño propuesto. El filtro de seguridad, la clasificación de ingredientes y la puntuación existen como [PROTO] en `paquetes/dominio/src/recetas.ts` con pruebas en `paquetes/dominio/test/recetas.test.ts`. El catálogo de recetas, la generación asistida y la interfaz no están implementados.
 
 ## 1. Fuentes de recetas
 

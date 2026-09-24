@@ -1,7 +1,7 @@
 # Especificación técnica de FoodApp
 
 Versión del documento: 0.2 (diseño con decisiones de plataforma cerradas; ver `09-decisiones.md`)
-Estado: Diseño propuesto. Nada de lo descrito aquí está implementado salvo lo marcado explícitamente como "Prototipo" (ver `prototipo/`).
+Estado: Diseño propuesto, con la fase F0 (fundamentos) en construcción: ver el estado de cada elemento en `README.md`. Las reglas marcadas [PROTO] están en el paquete de dominio `paquetes/dominio/`.
 
 Leyenda de estado usada en todo el documento:
 
@@ -9,7 +9,7 @@ Leyenda de estado usada en todo el documento:
 |---|---|
 | [REQ] | Requisito funcional: lo que el sistema debe hacer. |
 | [DIS] | Diseño propuesto: cómo se propone resolverlo. No existe código de producción. |
-| [PROTO] | Prototipo: existe código de validación en `prototipo/` con pruebas, no integrado en una aplicación. |
+| [PROTO] | Prototipo: existe código de validación en `paquetes/dominio/` con pruebas, todavía no integrado en las pantallas de la app. |
 | [IMPL] | Funcionalidad implementada. Actualmente ninguna. |
 | [PEND] | Limitación pendiente o decisión abierta. |
 
@@ -86,7 +86,7 @@ La especificación detallada de cada funcionalidad está en `docs/02-requisitos-
 
 ## 4. Modelo de datos
 
-Resumen. El detalle de campos, restricciones y políticas está en `docs/04-modelo-de-datos.md` y el esquema SQL de referencia en `db/schema.sql`.
+Resumen. El detalle de campos, restricciones y políticas está en `docs/04-modelo-de-datos.md` y el esquema SQL en `supabase/migrations/`.
 
 ### 4.1 Entidades principales
 
@@ -170,7 +170,7 @@ Resumen. El detalle de campos, restricciones y políticas está en `docs/04-mode
 
 ## 6. Reglas de negocio
 
-Reglas numeradas y verificables. Las marcadas [PROTO] tienen prueba automatizada en `prototipo/test/`.
+Reglas numeradas y verificables. Las marcadas [PROTO] tienen prueba automatizada en `paquetes/dominio/test/`.
 
 ### 6.1 Inventario
 
@@ -267,7 +267,7 @@ Decisiones de plataforma en `09-decisiones.md` (DEC-01 a DEC-08).
 |---|---|---|
 | Frontend móvil | React Native con Expo (TypeScript), `expo-router`, `expo-camera` con escáner de documentos nativo (ML Kit Document Scanner en Android, VisionKit en iOS), `expo-sqlite` para modo sin conexión, `expo-secure-store` para credenciales, EAS Build para publicar. | Una base de código; reutiliza el dominio TypeScript ya probado (DEC-01). |
 | Backend | Supabase: funciones de PostgreSQL llamadas por RPC para toda operación de inventario (una transacción por operación) y Edge Functions en TypeScript para lectura de tickets, exportación, eliminación de cuenta y notificaciones. | Sin servidor propio que mantener; la lógica crítica vive junto a los datos (DEC-02). |
-| Base de datos | PostgreSQL gestionado por Supabase, con RLS forzada, `pg_trgm` para búsqueda aproximada de productos y restricciones `CHECK` para cantidades. | Integridad transaccional del libro de movimientos; aislamiento por usuario comprobado en `db/test_rls.sql`. |
+| Base de datos | PostgreSQL gestionado por Supabase, con RLS para el rol `authenticated`, privilegios mínimos (sin acceso anónimo ni vaciado de tablas), `pg_trgm` para búsqueda aproximada de productos y restricciones `CHECK` para cantidades. | Integridad transaccional del libro de movimientos; aislamiento por usuario comprobado en `supabase/pruebas/`. |
 | Autenticación | Supabase Auth: correo y contraseña con verificación, Sign in with Apple y Google, rotación de tokens con detección de reutilización, bloqueo de contraseñas filtradas (plan Pro). | Sin criptografía de contraseñas propia (DEC-03). |
 | Lectura de tickets | Edge Function que envía las imágenes a Claude Opus 5 (`claude-opus-5`) con salida estructurada por esquema JSON; el módulo de dominio `ticket.ts` verifica la aritmética de cada línea y la reconciliación con el total, y asigna la confianza. | Un único componente lee y propone; el código propio verifica (DEC-04). |
 | Normalización | Alias aprendidos por usuario y cadena, diccionario de abreviaturas por cadena, búsqueda por trigramas sobre el catálogo; la interpretación del modelo es una propuesta más. | Ver `06-ocr-y-normalizacion.md`. |
@@ -381,7 +381,7 @@ Criterios globales. Los criterios por funcionalidad están en `docs/02-requisito
 |---|---|---|
 | CA-01 | Ningún lote existe sin un movimiento `entrada_compra`, `entrada_manual` o `entrada_sobras` asociado y confirmado por el usuario. | Consulta de integridad en pruebas de integración. |
 | CA-02 | Para todo lote, `cantidad_disponible = cantidad_inicial + suma(deltas)` y `cantidad_disponible >= 0`. | Restricción en base de datos y prueba de propiedades. |
-| CA-03 | Consumir 1/4 de un lote de 1000 g deja 750 g; 1/2 de 500 g deja 250 g; 3/4 de 1 ud deja 0,25 ud; una porción de 30 g de un lote de 500 g deja 470 g y el lote sigue `disponible`. | Pruebas unitarias en `prototipo/test/inventario.test.ts`. [PROTO] |
+| CA-03 | Consumir 1/4 de un lote de 1000 g deja 750 g; 1/2 de 500 g deja 250 g; 3/4 de 1 ud deja 0,25 ud; una porción de 30 g de un lote de 500 g deja 470 g y el lote sigue `disponible`. | Pruebas unitarias en `paquetes/dominio/test/inventario.test.ts`. [PROTO] |
 | CA-04 | Un usuario autenticado como B obtiene 404 al acceder a cualquier recurso de A por cualquier endpoint. | Batería de pruebas de aislamiento. |
 | CA-05 | Una receta con un alérgeno declarado nunca aparece en sugerencias. | Pruebas del motor de recetas. [PROTO] |
 | CA-06 | La pantalla de perfil energético muestra método, metabolismo basal, factor, gasto diario, ajuste, rango y advertencia. | Prueba de interfaz. |

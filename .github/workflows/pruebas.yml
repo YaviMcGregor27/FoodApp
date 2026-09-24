@@ -5,29 +5,25 @@ on:
   pull_request:
 
 jobs:
-  prototipo:
-    name: Prototipo (tipos y pruebas)
+  dominio:
+    name: Dominio (tipos y pruebas)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: prototipo
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: prototipo/package-lock.json
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
+      - run: npm run typecheck -w @foodapp/dominio
+      - run: npm test -w @foodapp/dominio
 
-  esquema:
-    name: Esquema SQL (aislamiento y reglas de inventario)
+  supabase:
+    name: Base de datos (migraciones, aislamiento y reglas)
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: foodapp_test
@@ -45,4 +41,24 @@ jobs:
       PGDATABASE: foodapp_test
     steps:
       - uses: actions/checkout@v4
-      - run: psql -v ON_ERROR_STOP=1 -f db/schema.sql -f db/test_rls.sql
+      - run: supabase/pruebas/ejecutar.sh
+
+  movil:
+    name: App móvil (tipos, pruebas, empaquetado y extremo a extremo)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/movil
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+        working-directory: .
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run verificar:android
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e

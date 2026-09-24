@@ -1,0 +1,23 @@
+{
+  "name": "@foodapp/dominio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reglas de negocio de FoodApp (cantidades, inventario, energía, nutrición, recetas, tickets), compartidas por la app y el servidor.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "~5.9.2"
+  }
+}

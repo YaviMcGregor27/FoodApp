@@ -11,20 +11,26 @@ Aplicación móvil para gestionar la despensa a partir de fotografías de ticket
 | Diseño de pantallas | Diseño propuesto | `docs/03-pantallas.md` |
 | Modelo de datos y esquema SQL con aislamiento por usuario | Diseño propuesto (no desplegado) | `docs/04-modelo-de-datos.md`, `db/schema.sql` |
 | Motor energético y nutricional | Diseño propuesto + prototipo | `docs/05-motor-energetico-y-nutricional.md` |
-| OCR de tickets y normalización | Diseño propuesto + prototipo del analizador de líneas | `docs/06-ocr-y-normalizacion.md` |
+| Lectura de tickets y normalización | Diseño propuesto + prototipo de verificación de líneas | `docs/06-ocr-y-normalizacion.md` |
 | Motor de recetas | Diseño propuesto + prototipo de clasificación y puntuación | `docs/07-motor-de-recetas.md` |
 | Ejemplos operativos (inventario, consumos, receta, perfil) | Ejemplo ilustrativo | `docs/08-ejemplos-operativos.md` |
+| Decisiones de plataforma, proveedores y mercado inicial | Decidido | `docs/09-decisiones.md` |
+| Integración continua (tipos, pruebas del dominio y del esquema SQL) | Activa | `.github/workflows/pruebas.yml` |
 | Núcleo de reglas de negocio en TypeScript con pruebas | Prototipo | `prototipo/` |
-| Aplicación móvil, backend, autenticación, OCR real | Limitación pendiente: no implementado | — |
+| Aplicación móvil, backend en Supabase, autenticación, lectura real de tickets | Limitación pendiente: no implementado (fase F0 en adelante) | — |
+
+Plataforma decidida (detalle y motivos en `docs/09-decisiones.md`): app en React Native con Expo, backend en Supabase (región UE), lectura de tickets con Claude Opus 5 verificada por reglas propias, datos nutricionales de Open Food Facts, CIQUAL y USDA, y lanzamiento inicial en España. La siguiente fase es F0 (fundamentos); las tareas que requieren al propietario están al final de `docs/09-decisiones.md`.
 
 Ninguna parte de este repositorio es todavía una funcionalidad implementada en producción. El prototipo de `prototipo/` valida reglas de negocio (cantidades, consumos parciales, lotes, cálculo energético, lectura de líneas de ticket, clasificación de ingredientes) de forma aislada y verificable mediante pruebas.
 
 ## Ejecutar las pruebas del prototipo
 
-Requiere Node.js 22.18 o superior (ejecuta TypeScript de forma nativa, sin dependencias).
+Requiere Node.js 22.18 o superior (ejecuta TypeScript de forma nativa; las únicas dependencias son de desarrollo, para comprobar tipos).
 
 ```bash
 cd prototipo
+npm ci
+npm run typecheck
 npm test
 ```
 

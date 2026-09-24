@@ -3,7 +3,7 @@
 Estado: ejemplo ilustrativo de cómo presenta la información la aplicación diseñada. No son datos reales de ningún usuario.
 
 - Los cálculos de cantidades, energía y nutrientes se han obtenido ejecutando el prototipo (`prototipo/dominio/`).
-- Los valores nutricionales por 100 g usados en la receta son valores de ejemplo aproximados, no verificados contra una fuente concreta. En la aplicación se obtendrían de la etiqueta del envase o de BEDCA, Open Food Facts u otra fuente identificada (RN-NUT-01).
+- Los valores nutricionales por 100 g usados en la receta son valores de ejemplo aproximados, no verificados contra una fuente concreta. En la aplicación se obtendrían de la etiqueta del envase, Open Food Facts, CIQUAL o USDA FoodData Central (RN-NUT-01, DEC-05).
 - Fecha de referencia del ejemplo: 24/09/2026.
 
 ---

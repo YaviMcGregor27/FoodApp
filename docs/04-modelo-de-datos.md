@@ -115,5 +115,5 @@ Si el `idempotency_key` ya existe, la operación devuelve el resultado anterior 
 |---|---|
 | Imágenes de tickets | 90 días por defecto, configurable (0 = borrar al confirmar). |
 | Movimientos, lotes, diario, medidas | Mientras la cuenta exista. |
-| Cuenta eliminada | Purga en 7 días (`app.purge_user`), copias de seguridad en 35 días. |
+| Cuenta eliminada | Purga en 7 días (`app.purge_user`); en las copias de seguridad, al caducar la retención del plan contratado. |
 | `audit_log` | 2 años; tras la purga solo queda el registro `cuenta_purgada` sin datos personales. |

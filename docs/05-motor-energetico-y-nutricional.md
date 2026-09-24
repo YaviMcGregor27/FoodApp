@@ -85,7 +85,7 @@ Media móvil exponencial con factor 0,1 por día sobre el peso diario (primer re
 | Regla | Detalle |
 |---|---|
 | Fuente | Cada valor guarda su fuente y su base (100 g, 100 ml, unidad, ración). |
-| Prioridad | Etiqueta del envase > Open Food Facts (por código de barras) > BEDCA > USDA FoodData Central o CIQUAL > introducido por el usuario sin etiqueta. |
+| Prioridad | Etiqueta del envase > Open Food Facts (por código de barras) > CIQUAL > USDA FoodData Central > introducido por el usuario sin etiqueta. BEDCA no se usa sin autorización de AESAN (DEC-05). |
 | Coherencia de masa | Proteínas + carbohidratos + grasas + fibra + alcohol <= 102 g por 100 g. Azúcares <= carbohidratos. Saturadas <= grasas. |
 | Coherencia energética | `4P + 4C + 9G + 2 fibra + 7 alcohol` dentro de +-15 % (o +-10 kcal) de las kcal declaradas; si no, se marca para revisión. |
 | Sin datos | Se muestra "Sin datos"; los totales indican el porcentaje del peso cubierto. |

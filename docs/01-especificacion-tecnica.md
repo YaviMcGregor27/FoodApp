@@ -1,6 +1,6 @@
 # Especificación técnica de FoodApp
 
-Versión del documento: 0.1 (borrador de diseño)
+Versión del documento: 0.2 (diseño con decisiones de plataforma cerradas; ver `09-decisiones.md`)
 Estado: Diseño propuesto. Nada de lo descrito aquí está implementado salvo lo marcado explícitamente como "Prototipo" (ver `prototipo/`).
 
 Leyenda de estado usada en todo el documento:
@@ -129,7 +129,7 @@ Resumen. El detalle de campos, restricciones y políticas está en `docs/04-mode
 1. El usuario pulsa "Escanear ticket". La cámara detecta bordes y avisa si hay poca luz, desenfoque o el ticket no cabe completo.
 2. Para tickets largos, el usuario toma varias fotografías solapadas; la aplicación las ordena y elimina líneas duplicadas del solapamiento.
 3. Las imágenes se suben cifradas en tránsito. El ticket queda en estado `procesando`.
-4. El servicio OCR extrae texto con coordenadas; el analizador identifica cabecera (tienda, fecha, hora), líneas de producto, descuentos, subtotales y total.
+4. La función de lectura envía las imágenes al modelo multimodal, que devuelve por esquema JSON la cabecera (tienda, fecha, hora), las líneas transcritas literalmente con su interpretación, los descuentos y el total. El módulo de dominio verifica la aritmética de cada línea y fija la confianza (DEC-04).
 5. El normalizador propone producto, categoría, cantidad, unidad y confianza por campo. Detecta artículos no alimentarios.
 6. La reconciliación compara la suma de líneas menos descuentos con el total impreso y muestra el resultado.
 7. El usuario revisa en la pantalla de revisión: acepta, corrige, divide, combina o descarta líneas; completa fechas de caducidad y ubicaciones. Los campos de baja confianza exigen acción explícita.
@@ -233,59 +233,62 @@ Reglas numeradas y verificables. Las marcadas [PROTO] tienen prueba automatizada
 
 ### 7.1 Vista general [DIS]
 
+Decisiones de plataforma en `09-decisiones.md` (DEC-01 a DEC-08).
+
 ```
-+-------------------------+        HTTPS (TLS 1.3)        +---------------------------+
-| App móvil               | ----------------------------> | Pasarela API              |
-| React Native + Expo     |                               | (limitación de tasa, JWT) |
-| SQLite local + cola     | <---------------------------- +-------------+-------------+
-+-----------+-------------+                                             |
-            |                                                           v
-            | Carga directa con URL firmada                  +----------+-----------+
-            v                                                | Backend de dominio   |
-+-------------------------+                                  | TypeScript (NestJS)  |
-| Almacenamiento objetos  |                                  | Inventario, recetas, |
-| S3 compatible, cifrado  |                                  | nutrición, energía   |
-+-----------+-------------+                                  +---+------+------+----+
-            |                                                    |      |      |
-            v                                                    v      |      v
-+-------------------------+    cola de trabajos     +------------+--+   |  +---+-----------------+
-| Trabajador OCR          | <---------------------- | PostgreSQL 16 |   |  | Servicio de         |
-| OCR + análisis líneas   | ----------------------> | con RLS       |   |  | autenticación (OIDC)|
-| + normalización         |    resultados           +---------------+   |  +---------------------+
-+-------------------------+                                             v
-                                                          +-------------+-------------+
-                                                          | Notificaciones            |
-                                                          | Planificador + FCM / APNs |
-                                                          +---------------------------+
++---------------------------+          HTTPS (TLS)           +-----------------------------------------+
+| App móvil                 | -----------------------------> | Supabase (región UE, Fráncfort)         |
+| React Native + Expo (TS)  |                                |                                         |
+| SQLite local + cola       | <----------------------------- |  Auth: correo, Apple, Google, JWT       |
+| Paquete de dominio (TS)   |                                |  PostgreSQL + RLS + funciones RPC       |
++---------------------------+                                |    (inventario, cocinado, diario)       |
+            |                                                |  Storage: imágenes de tickets cifradas  |
+            | Subida con URL firmada                         |  Edge Functions (TypeScript):           |
+            +----------------------------------------------> |    lectura de tickets, exportación,     |
+                                                             |    eliminación, notificaciones          |
+                                                             +------+-----------------+----------------+
+                                                                    |                 |
+                                                     imágenes sin   |                 | avisos sin datos
+                                                     identificadores|                 | de salud
+                                                                    v                 v
+                                                  +-----------------------+   +--------------------+
+                                                  | API de Anthropic      |   | Expo Push          |
+                                                  | Claude Opus 5         |   | (FCM / APNs)       |
+                                                  | salida estructurada   |   +--------------------+
+                                                  +-----------------------+
+                                                  +-----------------------+
+                                                  | Open Food Facts API   |  (por código de barras)
+                                                  +-----------------------+
 ```
 
 ### 7.2 Componentes
 
-| Componente | Propuesta | Justificación | Alternativas |
-|---|---|---|---|
-| Frontend móvil | React Native con Expo (TypeScript). Cámara con `expo-camera` y detección de documento en el dispositivo (ML Kit Document Scanner en Android, VisionKit en iOS). Base local SQLite para modo sin conexión. | Una base de código para iOS y Android; el código de dominio TypeScript se comparte con el backend; acceso a escáneres de documentos nativos que corrigen perspectiva. | Flutter. |
-| Backend | Servicio TypeScript (NestJS) con arquitectura por módulos (M1–M12). Operaciones de inventario en transacciones serializables por lote. | Reutiliza el núcleo de dominio probado en `prototipo/`. | Kotlin/Spring, Go. |
-| Base de datos | PostgreSQL 16 con RLS, `pg_trgm` para búsqueda aproximada de productos, restricciones `CHECK` para cantidades. | Integridad transaccional imprescindible para el libro de movimientos; RLS como segunda barrera de aislamiento. | — |
-| Autenticación | Proveedor OIDC gestionado (Supabase Auth, Auth0, AWS Cognito o Keycloak autogestionado). Correo y contraseña con verificación, Sign in with Apple y Google opcionales. | No implementar criptografía de contraseñas propia. | — |
-| Servicio OCR | Dos etapas: (1) OCR con coordenadas mediante un servicio especializado en recibos (Google Document AI, Azure AI Document Intelligence modelo de recibos o AWS Textract AnalyzeExpense); (2) análisis estructurado de líneas con reglas deterministas y, como respaldo para líneas no resueltas, un modelo multimodal de lenguaje con salida JSON validada por esquema. | Los servicios de recibos resuelven bien cabecera y totales; las reglas cubren formatos de peso, multiplicadores y descuentos de forma verificable; el modelo generativo solo propone, nunca confirma. | OCR en dispositivo (ML Kit Text Recognition) como modo sin conexión con menor precisión. |
-| Normalización | Diccionario de abreviaturas por cadena, alias aprendidos por usuario, búsqueda por trigramas y por similitud semántica sobre el catálogo, clasificador de categoría. | Ver `docs/06-ocr-y-normalizacion.md`. | — |
-| Datos nutricionales | Orden de preferencia: (1) etiqueta del envase escaneada o introducida por el usuario; (2) Open Food Facts por código de barras; (3) BEDCA (base española de composición de alimentos) para genéricos; (4) USDA FoodData Central y CIQUAL como respaldo. | Fuentes identificables y citables. Licencias a validar antes de producción [PEND]: Open Food Facts usa ODbL (obliga a atribución y a compartir mejoras de la base); revisar condiciones de uso de BEDCA. | — |
-| Motor de recetas | Catálogo curado de recetas con ingredientes estructurados como fuente principal; generación asistida por modelo de lenguaje como opción secundaria, con validación determinista de alérgenos, cantidades y nutrientes calculados por el propio sistema. | Ver `docs/07-motor-de-recetas.md`. | — |
-| Notificaciones | Planificador (tabla de trabajos en PostgreSQL o cola gestionada) + Expo Push, FCM y APNs. | Avisos de caducidad a la hora preferida del usuario. | — |
-| Colas | Cola de trabajos para OCR y notificaciones (por ejemplo, pg-boss sobre PostgreSQL o SQS). | Procesamiento asíncrono con reintentos. | — |
-| Observabilidad | Registro estructurado sin datos personales, trazas distribuidas, métricas de precisión OCR (tasa de corrección por campo). | Mejora continua medible. | — |
+| Componente | Decisión | Justificación |
+|---|---|---|
+| Frontend móvil | React Native con Expo (TypeScript), `expo-router`, `expo-camera` con escáner de documentos nativo (ML Kit Document Scanner en Android, VisionKit en iOS), `expo-sqlite` para modo sin conexión, `expo-secure-store` para credenciales, EAS Build para publicar. | Una base de código; reutiliza el dominio TypeScript ya probado (DEC-01). |
+| Backend | Supabase: funciones de PostgreSQL llamadas por RPC para toda operación de inventario (una transacción por operación) y Edge Functions en TypeScript para lectura de tickets, exportación, eliminación de cuenta y notificaciones. | Sin servidor propio que mantener; la lógica crítica vive junto a los datos (DEC-02). |
+| Base de datos | PostgreSQL gestionado por Supabase, con RLS forzada, `pg_trgm` para búsqueda aproximada de productos y restricciones `CHECK` para cantidades. | Integridad transaccional del libro de movimientos; aislamiento por usuario comprobado en `db/test_rls.sql`. |
+| Autenticación | Supabase Auth: correo y contraseña con verificación, Sign in with Apple y Google, rotación de tokens con detección de reutilización, bloqueo de contraseñas filtradas (plan Pro). | Sin criptografía de contraseñas propia (DEC-03). |
+| Lectura de tickets | Edge Function que envía las imágenes a Claude Opus 5 (`claude-opus-5`) con salida estructurada por esquema JSON; el módulo de dominio `ticket.ts` verifica la aritmética de cada línea y la reconciliación con el total, y asigna la confianza. | Un único componente lee y propone; el código propio verifica (DEC-04). |
+| Normalización | Alias aprendidos por usuario y cadena, diccionario de abreviaturas por cadena, búsqueda por trigramas sobre el catálogo; la interpretación del modelo es una propuesta más. | Ver `06-ocr-y-normalizacion.md`. |
+| Datos nutricionales | Etiqueta del envase > Open Food Facts (código de barras) > CIQUAL > USDA FoodData Central. BEDCA excluida hasta autorización. | Licencias compatibles con uso comercial (DEC-05). |
+| Motor de recetas | Catálogo curado con ingredientes estructurados; adaptación asistida por modelo en fase posterior, con validación determinista de alérgenos y nutrientes calculados por el sistema. | Ver `07-motor-de-recetas.md`. |
+| Notificaciones | Tareas programadas de Supabase (`pg_cron`) que invocan una Edge Function; envío con Expo Push (FCM y APNs). | Resumen diario de caducidades a la hora del usuario. |
+| Procesamiento asíncrono | Tabla de trabajos en PostgreSQL con reintentos, consumida por Edge Functions. | Sin infraestructura de colas adicional. |
+| Observabilidad | Registros estructurados sin datos personales; métricas de lectura de tickets (tasa de corrección por campo, coste por ticket). | Mejora medible. |
+| Integración continua | GitHub Actions: tipos y pruebas del dominio, pruebas del esquema SQL (DEC-10). | Evita integrar cambios que rompan reglas. |
 
 ### 7.3 Modo sin conexión [DIS]
 
 - La despensa se replica en SQLite local. Las operaciones se encolan como comandos con clave de idempotencia (UUID generado en el dispositivo).
 - Al sincronizar, el servidor aplica los comandos en orden. Si un consumo supera la cantidad disponible por un cambio concurrente, el comando se rechaza y el usuario resuelve el conflicto; nunca se deja una cantidad negativa.
-- La lectura de tickets requiere conexión en la versión 1 [PEND]; las fotos se guardan y se procesan al recuperar conexión.
+- La lectura de tickets requiere conexión en la versión 1 (DEC-07); las fotos se guardan y se procesan al recuperar conexión.
 
 ### 7.4 Protección de datos y copias de seguridad [DIS]
 
-- Copias completas diarias y recuperación a un punto en el tiempo con retención de 35 días, cifradas, en una región distinta dentro de la misma jurisdicción.
+- Copias diarias gestionadas por Supabase y recuperación a un punto en el tiempo (complemento de pago, obligatorio antes del lanzamiento), con retención configurada según la oferta del plan contratado [PEND: fijar la retención exacta al contratar].
 - Prueba de restauración trimestral documentada.
-- Las eliminaciones de cuenta se propagan a las copias por caducidad natural de la retención (máximo 35 días); se informa al usuario de este plazo.
+- Las eliminaciones de cuenta se propagan a las copias por caducidad natural de su retención; se informa al usuario de ese plazo.
 
 ---
 
@@ -295,22 +298,22 @@ Reglas numeradas y verificables. Las marcadas [PROTO] tienen prueba automatizada
 
 | Aspecto | Diseño |
 |---|---|
-| Registro | Correo y contraseña (mínimo 12 caracteres, comprobación contra listas de contraseñas filtradas), o proveedor federado. Aceptación de términos y consentimiento específico para datos de salud. |
+| Registro | Correo y contraseña (mínimo 12 caracteres; comprobación contra contraseñas filtradas con la protección de Supabase desde el plan Pro), Sign in with Apple o Google. Aceptación de términos y consentimiento específico para datos de salud. |
 | Verificación de correo | Enlace de un solo uso con caducidad de 24 horas. |
 | Inicio de sesión | Limitación de intentos por cuenta y por IP con retardo progresivo. Mensajes de error que no revelan si el correo existe. |
-| Tokens | Token de acceso de 15 minutos; token de refresco rotatorio de 30 días con detección de reutilización (si se reutiliza uno antiguo, se revoca toda la familia de sesiones). |
+| Tokens | Token de acceso de 15 minutos; token de refresco rotatorio con detección de reutilización de Supabase Auth (si se reutiliza uno antiguo, se revoca toda la sesión). |
 | Almacenamiento en dispositivo | Tokens en Keychain (iOS) y Keystore (Android) mediante `expo-secure-store`. Desbloqueo biométrico opcional. |
 | Cierre de sesión | Revoca el token de refresco en servidor y borra la caché local de datos sensibles. Opción "Cerrar sesión en todos los dispositivos". |
 | Recuperación de contraseña | Enlace de un solo uso, caducidad de 30 minutos, invalida sesiones abiertas tras el cambio. |
 | Segundo factor | TOTP opcional [PEND para fase posterior]. |
-| Eliminación de cuenta | Requiere reautenticación. Desactivación inmediata, borrado definitivo en 7 días (periodo de arrepentimiento), purga de copias de seguridad en 35 días. |
+| Eliminación de cuenta | Requiere reautenticación. Desactivación inmediata, borrado definitivo en 7 días (periodo de arrepentimiento), purga en copias de seguridad al caducar su retención. |
 | Exportación | Archivo ZIP con JSON y CSV de todas las entidades del usuario y las imágenes de sus tickets. Generado de forma asíncrona, enlace de descarga firmado de 24 horas, notificación al completarse, registro en auditoría. |
 
 ### 8.2 Privacidad [DIS]
 
 - Los datos de peso, medidas, condiciones médicas y alergias son datos relativos a la salud (categoría especial en el RGPD, art. 9). Base jurídica: consentimiento explícito, separado y revocable.
 - Evaluación de impacto de protección de datos antes del lanzamiento [PEND].
-- Residencia de datos en la Unión Europea.
+- Residencia de datos en la Unión Europea (proyecto de Supabase en Fráncfort). Las imágenes de tickets enviadas a la API de Anthropic no llevan identificadores del usuario; si su procesamiento no puede fijarse en la UE, se declarará como transferencia internacional en la política de privacidad [PEND, DEC-04].
 - Minimización: el sexo es opcional; la fecha de nacimiento se usa solo para calcular la edad.
 - Las imágenes de tickets pueden contener datos de tarjeta parciales y datos de la tienda. Opción de borrar la imagen tras la confirmación manteniendo los datos estructurados. Retención por defecto de las imágenes: 90 días, configurable.
 - Envío a proveedores externos (OCR, modelos de lenguaje): solo la imagen del ticket o el texto de la línea, sin identificadores del usuario; contratos de encargado del tratamiento; proveedores que no usen los datos para entrenamiento.
@@ -318,7 +321,7 @@ Reglas numeradas y verificables. Las marcadas [PROTO] tienen prueba automatizada
 
 ### 8.3 Controles técnicos [DIS]
 
-- RLS en todas las tablas de usuario, más comprobación de propiedad en el backend (defensa en profundidad).
+- RLS forzada en todas las tablas de usuario; las funciones RPC derivan el usuario del token y nunca lo reciben como parámetro (defensa en profundidad).
 - Pruebas automáticas de aislamiento: para cada endpoint, un usuario B intenta leer y modificar recursos de un usuario A y debe recibir 404.
 - Identificadores UUID no secuenciales.
 - Registro de auditoría de exportaciones, eliminaciones, cambios de correo o contraseña y accesos de soporte.
@@ -330,13 +333,13 @@ Reglas numeradas y verificables. Las marcadas [PROTO] tienen prueba automatizada
 
 | Integración | Uso | Datos enviados | Riesgo y mitigación | Estado |
 |---|---|---|---|---|
-| Servicio OCR de recibos | Extracción de texto y estructura | Imagen del ticket | Coste por página y latencia: compresión previa, límite de páginas por ticket | [DIS] |
-| Modelo multimodal de lenguaje | Interpretación de líneas ambiguas; adaptación opcional de recetas | Texto de líneas sin identificadores; lista de ingredientes y restricciones | Posibles interpretaciones erróneas: salida validada por esquema, nunca confirma por sí misma; alérgenos validados de forma determinista | [DIS] |
-| Open Food Facts | Datos nutricionales por código de barras | Código de barras | Datos colaborativos de calidad variable: validación de coherencia RN-NUT-02/03; licencia ODbL | [DIS] |
-| BEDCA, USDA FoodData Central, CIQUAL | Composición de alimentos genéricos | Ninguno (importación periódica al catálogo) | Licencias y actualizaciones a revisar [PEND] | [DIS] |
-| FCM y APNs (vía Expo Push) | Notificaciones | Token del dispositivo y texto de la notificación sin datos de salud | Texto genérico en pantalla bloqueada por defecto | [DIS] |
-| Proveedor OIDC | Autenticación | Correo, credenciales | Proveedor con certificaciones y región UE | [DIS] |
-| Correo transaccional | Verificación, recuperación, exportación | Correo | Plantillas sin datos de salud | [DIS] |
+| API de Anthropic (Claude Opus 5) | Lectura de tickets; adaptación de recetas en fase posterior | Imágenes del ticket sin identificadores del usuario | Interpretaciones erróneas: salida por esquema JSON, verificación aritmética propia y confirmación del usuario. Sin entrenamiento con datos de clientes; retención estándar de 30 días. Coste por ticket medido con el conjunto de evaluación | [DIS] |
+| Open Food Facts | Datos nutricionales por código de barras | Código de barras | Calidad variable: validación RN-NUT-02/03. ODbL: atribución visible y datos guardados en tablas separadas | [DIS] |
+| CIQUAL y USDA FoodData Central | Composición de alimentos genéricos | Ninguno (importación periódica al catálogo) | CIQUAL: Licencia Abierta de Etalab, citar fuente y fecha; nombres en francés traducidos. USDA: dominio público, citar fuente | [DIS] |
+| BEDCA | No se usa en la versión 1 | — | Reutilización no permitida sin autorización de AESAN | [PEND] |
+| Expo Push (FCM y APNs) | Notificaciones | Token del dispositivo y texto sin datos de salud | Texto genérico en pantalla bloqueada por defecto | [DIS] |
+| Supabase Auth | Autenticación | Correo, credenciales | Región UE; configuración de DEC-03 | [DIS] |
+| Correo transaccional (SMTP propio configurado en Supabase) | Verificación, recuperación, exportación | Correo | Plantillas sin datos de salud | [DIS] |
 
 ---
 
@@ -393,14 +396,14 @@ Criterios globales. Los criterios por funcionalidad están en `docs/02-requisito
 
 | Fase | Contenido | Entregable verificable | Dependencias |
 |---|---|---|---|
-| F0. Fundamentos | Repositorio, integración continua, núcleo de dominio (a partir de `prototipo/`), esquema de base de datos con RLS, autenticación completa (registro, verificación, inicio y cierre de sesión, recuperación), pruebas de aislamiento. | Usuario puede registrarse, verificar el correo, iniciar sesión y cerrarla; CA-04 en verde. | — |
+| F0. Fundamentos | Monorepositorio (DEC-08), traslado del prototipo a `paquetes/dominio`, proyecto de Supabase en la UE, migración inicial del esquema adaptada a Supabase Auth, autenticación completa (registro, verificación, inicio y cierre de sesión, recuperación, Apple y Google), app Expo con navegación y sesión, pruebas de aislamiento. La integración continua ya está activa (DEC-10). | Usuario puede registrarse, verificar el correo, iniciar sesión y cerrarla; CA-04 en verde. | — |
 | F1. Despensa manual | Alta manual de productos y lotes, ubicaciones, estados de caducidad, consumo parcial y total, desperdicio, correcciones, historial de movimientos. | CA-02 y CA-03 en integración real. | F0 |
 | F2. Perfil y energía | Cuestionario, restricciones, cálculo energético con presentación completa, avisos sanitarios. | CA-06. | F0 |
-| F3. Tickets | Captura, OCR, análisis de líneas, normalización con alias, pantalla de revisión, reconciliación, duplicados. | CA-01, CA-07 (evaluación con conjunto real), CA-08. | F1 |
+| F3. Tickets | Captura, Edge Function de lectura con Claude Opus 5 y salida estructurada, verificación aritmética, normalización con alias, pantalla de revisión, reconciliación, duplicados, evaluación con los 200 tickets (DEC-06). | CA-01, CA-07, CA-08; coste por ticket medido. | F1 |
 | F4. Nutrición | Catálogo nutricional, vinculación de productos, validaciones de coherencia, diario de ingesta. | Diario diario con totales y porcentaje de cobertura de datos. | F1, F2 |
 | F5. Recetas | Catálogo curado, filtros estrictos, puntuación, clasificación de ingredientes, lista de compra, registro de cocinado y sobras. | CA-05; cocinar una receta descuenta los lotes correctos. | F1, F4 |
 | F6. Seguimiento corporal y notificaciones | Registro de peso y medidas, tendencia, gráficos, avisos de caducidad y recordatorios. | Gráfico con tendencia; notificación de caducidad recibida en dispositivo. | F2 |
 | F7. Privacidad completa | Exportación, eliminación con purga, gestión de consentimientos, auditoría, evaluación de impacto. | CA-09, CA-10. | Todas |
-| F8. Mejoras | Recalibración energética con datos reales, escaneo de códigos de barras y de fechas en envases, OCR sin conexión, despensa compartida con consentimiento. | Según alcance. | F1–F7 |
+| F8. Mejoras | Recalibración energética con datos reales, escaneo de fechas en envases, lectura de tickets sin conexión, segundo factor de autenticación, despensa compartida con consentimiento. | Según alcance. | F1–F7 |
 
 Orden recomendado para un producto mínimo viable: F0, F1, F2, F3, F4, F5, F7 (la privacidad completa es requisito previo al lanzamiento público), F6.

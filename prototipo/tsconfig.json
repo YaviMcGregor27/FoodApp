@@ -7,7 +7,13 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "types": [
+      "node"
+    ]
   },
-  "include": ["dominio", "test"]
+  "include": [
+    "dominio",
+    "test"
+  ]
 }

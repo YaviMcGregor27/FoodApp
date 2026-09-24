@@ -1,0 +1,13 @@
+{
+  "name": "foodapp-prototipo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototipo del núcleo de reglas de negocio de FoodApp. No es código de producción.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  }
+}

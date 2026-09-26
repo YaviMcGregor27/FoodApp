@@ -23,7 +23,10 @@ La última línea debe ser `OK: todas las comprobaciones del esquema han pasado`
 
 Pasos para el propietario; requieren una cuenta de Supabase.
 
-1. En [supabase.com](https://supabase.com), crear un proyecto nuevo en la región **Central EU (Frankfurt)**. Guardar la contraseña de la base de datos en un gestor de contraseñas.
+1. En [supabase.com](https://supabase.com), crear un proyecto nuevo en la región **Central EU (Frankfurt)**. Guardar la contraseña de la base de datos en un gestor de contraseñas. En el apartado *Security* del formulario:
+   - *Enable Data API*: marcada (la app la necesita).
+   - *Automatically expose new tables*: desmarcada. La migración concede de forma explícita solo los permisos necesarios; las pruebas pasan también sin los permisos por defecto.
+   - *Enable automatic RLS*: marcada, como red de seguridad para tablas futuras.
 2. En *Project Settings > API*, copiar la URL del proyecto y la clave pública (publishable o anon). Se ponen en `apps/movil/.env` (ver `apps/movil/.env.example`).
 3. Con la [CLI de Supabase](https://supabase.com/docs/guides/cli) instalada, desde la raíz del repositorio:
 

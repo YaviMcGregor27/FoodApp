@@ -41,6 +41,15 @@ Pasos para el propietario; requieren una cuenta de Supabase.
 5. En *Authentication > Emails*, configurar un servidor SMTP propio. El envío de correo incluido en Supabase tiene límites muy bajos y no sirve para usuarios reales.
 6. Antes del lanzamiento (DEC-02 y DEC-03): pasar al plan Pro, activar la protección de contraseñas filtradas y la recuperación a un punto en el tiempo.
 
+### Estado del proyecto alojado
+
+- 26/09/2026: proyecto creado en Frankfurt. La migración `20260925000000_esquema_inicial.sql` se aplicó a mano desde el *SQL Editor* del panel (con la opción *Run and enable RLS*); la comprobación dio 23 tablas, 2 disparadores y 0 tablas sin RLS.
+- Como no se aplicó con la CLI, antes del primer `supabase db push` hay que marcarla como aplicada para que no se repita:
+
+  ```bash
+  npx supabase migration repair --status applied 20260925000000
+  ```
+
 La clave de servicio (`service_role`) nunca se pone en la app ni en el repositorio: solo la usan las funciones de servidor.
 
 ## Modelo de seguridad

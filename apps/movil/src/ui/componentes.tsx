@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,7 +18,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { anchoMaximo, espacio, radio, useColores } from './tema';
 
-export function Pantalla({ children, centrada = false }: { children: ReactNode; centrada?: boolean }) {
+export function Pantalla({
+  children,
+  centrada = false,
+  alRefrescar,
+  refrescando = false,
+}: {
+  children: ReactNode;
+  centrada?: boolean;
+  /** Si se indica, deslizar hacia abajo recarga los datos. */
+  alRefrescar?: () => void;
+  refrescando?: boolean;
+}) {
   const c = useColores();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.fondo }} edges={['bottom', 'left', 'right']}>
@@ -25,6 +37,9 @@ export function Pantalla({ children, centrada = false }: { children: ReactNode; 
         <ScrollView
           contentContainerStyle={[estilos.contenido, centrada && estilos.centrada]}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            alRefrescar ? <RefreshControl refreshing={refrescando} onRefresh={alRefrescar} tintColor={c.primario} /> : undefined
+          }
         >
           <View style={estilos.columna}>{children}</View>
         </ScrollView>

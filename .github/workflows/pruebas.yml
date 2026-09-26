@@ -41,7 +41,12 @@ jobs:
       PGDATABASE: foodapp_test
     steps:
       - uses: actions/checkout@v4
-      - run: supabase/pruebas/ejecutar.sh
+      - name: Con los permisos por defecto de Supabase
+        run: supabase/pruebas/ejecutar.sh
+      - name: Sin permisos por defecto (configuración del proyecto real)
+        run: |
+          createdb foodapp_test_sin_permisos
+          PGDATABASE=foodapp_test_sin_permisos SIN_PERMISOS_POR_DEFECTO=1 supabase/pruebas/ejecutar.sh
 
   movil:
     name: App móvil (tipos, pruebas, empaquetado y extremo a extremo)

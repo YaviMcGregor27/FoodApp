@@ -44,10 +44,12 @@ Pasos para el propietario; requieren una cuenta de Supabase.
 ### Estado del proyecto alojado
 
 - 26/09/2026: proyecto `jepnoulrnrojnwmwvaip` creado en Frankfurt; la app apunta a él (`apps/movil/src/lib/supabase.ts`, solo URL y clave publicable). Ajustes de autenticación hechos en el panel: verificación de correo activada, contraseña mínima de 12 caracteres, Site URL `foodapp://` y redirecciones `foodapp://**` y `exp://**`. La migración `20260925000000_esquema_inicial.sql` se aplicó a mano desde el *SQL Editor* del panel (con la opción *Run and enable RLS*); la comprobación dio 23 tablas, 2 disparadores y 0 tablas sin RLS.
-- Como no se aplicó con la CLI, antes del primer `supabase db push` hay que marcarla como aplicada para que no se repita:
+- Pendiente: aplicar `20260927000000_despensa.sql` (fase F1) de la misma forma, desde el *SQL Editor*.
+- Como no se aplicaron con la CLI, antes del primer `supabase db push` hay que marcarlas como aplicadas para que no se repitan:
 
   ```bash
   npx supabase migration repair --status applied 20260925000000
+  npx supabase migration repair --status applied 20260927000000
   ```
 
 La clave de servicio (`service_role`) nunca se pone en la app ni en el repositorio: solo la usan las funciones de servidor.
@@ -58,4 +60,6 @@ La clave de servicio (`service_role`) nunca se pone en la app ni en el repositor
 - El rol anónimo no tiene acceso a ninguna tabla.
 - Se retiran los privilegios que Supabase concede por defecto y que no respetan RLS (`TRUNCATE`).
 - El usuario no puede fabricar consentimientos, cambiar su fecha de nacimiento ni modificar o borrar movimientos de inventario.
+- Las cantidades de la despensa solo cambian mediante las funciones `alta_lote`, `registrar_salida`, `ajustar_cantidad` y `deshacer_evento`, que registran cada cambio como movimiento. El usuario solo puede editar datos descriptivos (ubicación y fechas del lote; nombre, categoría y porción del producto).
+- Las pruebas se ejecutan con y sin los permisos que Supabase concede por defecto a las tablas nuevas (`SIN_PERMISOS_POR_DEFECTO=1`), porque el proyecto real se creó sin ellos.
 - La edad mínima (18 años) y la aceptación de los términos se validan en la base de datos, no solo en la app.

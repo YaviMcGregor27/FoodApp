@@ -1,5 +1,6 @@
--- Pruebas de la migración inicial: alta de cuentas, edad mínima, aislamiento entre
--- usuarios, privilegios, consumo parcial, libro de movimientos y purga de cuenta.
+-- Pruebas de cuentas y aislamiento: alta de cuentas, edad mínima, consentimientos,
+-- aislamiento entre usuarios, privilegios y purga de cuenta. Las reglas de inventario se
+-- prueban con las funciones de la despensa en 02_despensa.sql.
 -- Ejecutar sobre una base vacía con un superusuario (ver supabase/pruebas/ejecutar.sh).
 -- Cada bloque DO lanza una excepción si una comprobación falla.
 
@@ -133,7 +134,7 @@ INSERT INTO inventory_movement (user_id, lot_id, kind, delta, quantity_before, q
   ('00000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-00000000000b', 'entrada_compra', 1000, 0, 1000);
 
 -- ---------------------------------------------------------------------------
--- Usuario A: aislamiento, consumo parcial, concurrencia, inmutabilidad
+-- Usuario A: aislamiento, privilegios e inmutabilidad
 -- ---------------------------------------------------------------------------
 
 BEGIN;
@@ -159,16 +160,32 @@ BEGIN
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 0 THEN RAISE EXCEPTION 'A ha modificado un lote de B'; END IF;
 
-  -- Consumo parcial: 1/4 de 1000 g deja 750 g y el lote pasa a abierto.
-  INSERT INTO inventory_movement (user_id, lot_id, kind, delta, quantity_before, quantity_after)
-  VALUES ('00000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-00000000000a', 'consumo_parcial', -250, 1000, 750);
+  -- Datos descriptivos del lote propio sí se pueden cambiar.
+  UPDATE pantry_lot SET location = 'frigorifico' WHERE id = '20000000-0000-0000-0000-00000000000a';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN RAISE EXCEPTION 'A debería poder cambiar la ubicación de su lote'; END IF;
+END $$;
 
-  IF (SELECT available_quantity FROM pantry_lot WHERE id = '20000000-0000-0000-0000-00000000000a') <> 750 THEN
-    RAISE EXCEPTION 'Tras consumir 250 g deberían quedar 750 g';
-  END IF;
-  IF (SELECT status FROM pantry_lot WHERE id = '20000000-0000-0000-0000-00000000000a') <> 'abierto' THEN
-    RAISE EXCEPTION 'El lote debería estar abierto';
-  END IF;
+-- Las cantidades solo cambian mediante movimientos registrados por las funciones.
+DO $$
+BEGIN
+  BEGIN
+    UPDATE pantry_lot SET available_quantity = 5 WHERE id = '20000000-0000-0000-0000-00000000000a';
+    RAISE EXCEPTION 'FALLO: se ha cambiado la cantidad de un lote sin movimiento';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO inventory_movement (user_id, lot_id, kind, delta, quantity_before, quantity_after)
+    VALUES ('00000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-00000000000a', 'consumo_parcial', -250, 1000, 750);
+    RAISE EXCEPTION 'FALLO: se ha insertado un movimiento directamente';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO pantry_lot (user_id, user_product_id, unit, initial_quantity, available_quantity, purchased_on)
+    VALUES ('00000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000a', 'g', 10, 10, current_date);
+    RAISE EXCEPTION 'FALLO: se ha creado un lote sin movimiento de entrada';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
 END $$;
 
 -- Vaciar una tabla entera saltándose la seguridad por filas está prohibido.
@@ -191,42 +208,6 @@ BEGIN
   END;
 END $$;
 
--- Insertar un movimiento en nombre de B debe fallar.
-DO $$
-BEGIN
-  BEGIN
-    INSERT INTO inventory_movement (user_id, lot_id, kind, delta, quantity_before, quantity_after)
-    VALUES ('00000000-0000-0000-0000-00000000000b', '20000000-0000-0000-0000-00000000000b', 'consumo_parcial', -100, 1000, 900);
-    RAISE EXCEPTION 'FALLO: A ha insertado un movimiento de B';
-  EXCEPTION WHEN insufficient_privilege OR raise_exception THEN
-    IF SQLERRM LIKE 'FALLO:%' THEN RAISE; END IF;
-  END;
-END $$;
-
--- Consumir más de lo disponible debe fallar.
-DO $$
-BEGIN
-  BEGIN
-    INSERT INTO inventory_movement (user_id, lot_id, kind, delta, quantity_before, quantity_after)
-    VALUES ('00000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-00000000000a', 'consumo_parcial', -800, 750, -50);
-    RAISE EXCEPTION 'FALLO: se ha aceptado un consumo superior a lo disponible';
-  EXCEPTION WHEN check_violation OR raise_exception THEN
-    IF SQLERRM LIKE 'FALLO:%' THEN RAISE; END IF;
-  END;
-END $$;
-
--- Una cantidad previa desactualizada (concurrencia) debe fallar.
-DO $$
-BEGIN
-  BEGIN
-    INSERT INTO inventory_movement (user_id, lot_id, kind, delta, quantity_before, quantity_after)
-    VALUES ('00000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-00000000000a', 'consumo_parcial', -100, 1000, 900);
-    RAISE EXCEPTION 'FALLO: se ha aceptado una cantidad previa desactualizada';
-  EXCEPTION WHEN raise_exception THEN
-    IF SQLERRM NOT LIKE 'CANTIDAD_DESACTUALIZADA%' THEN RAISE; END IF;
-  END;
-END $$;
-
 -- Los movimientos son inmutables.
 DO $$
 BEGIN
@@ -235,19 +216,6 @@ BEGIN
     RAISE EXCEPTION 'FALLO: se ha podido borrar un movimiento';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
-END $$;
-
--- Consumo total: el lote pasa a agotado solo cuando la cantidad llega a cero.
-DO $$
-BEGIN
-  INSERT INTO inventory_movement (user_id, lot_id, kind, delta, quantity_before, quantity_after)
-  VALUES ('00000000-0000-0000-0000-00000000000a', '20000000-0000-0000-0000-00000000000a', 'consumo_total', -750, 750, 0);
-  IF (SELECT status FROM pantry_lot WHERE id = '20000000-0000-0000-0000-00000000000a') <> 'agotado' THEN
-    RAISE EXCEPTION 'El lote debería estar agotado';
-  END IF;
-  IF (SELECT sum(delta) FROM inventory_movement WHERE lot_id = '20000000-0000-0000-0000-00000000000a') <> 0 THEN
-    RAISE EXCEPTION 'La suma de movimientos no coincide con la cantidad disponible';
-  END IF;
 END $$;
 
 COMMIT;
@@ -264,7 +232,7 @@ BEGIN
   IF (SELECT count(*) FROM inventory_movement) <> 1 THEN
     RAISE EXCEPTION 'B debería ver solo su movimiento';
   END IF;
-  IF (SELECT available_quantity FROM pantry_lot) <> 1000 THEN
+  IF (SELECT available_quantity FROM pantry_lot) <> 1000 OR (SELECT location FROM pantry_lot) <> 'despensa' THEN
     RAISE EXCEPTION 'El lote de B no debería haber cambiado';
   END IF;
 END $$;

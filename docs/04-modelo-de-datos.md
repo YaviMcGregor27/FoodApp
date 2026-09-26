@@ -82,6 +82,17 @@ Conserva: `raw_text`, `proposed_name`, `proposed_category`, `quantity`, `unit`, 
 
 ## 4. Operaciones transaccionales clave
 
+Implementadas en la fase F1 como funciones de la base de datos (`supabase/migrations/20260927000000_despensa.sql`), que son la única vía para cambiar cantidades:
+
+| Función | Qué hace |
+|---|---|
+| `alta_lote` | Crea el producto si no existe (mismo nombre y unidad se reutiliza), el lote y su movimiento `entrada_manual`. Valida nombre, cantidades y fechas. |
+| `registrar_salida` | Consumo o desperdicio de una cantidad en unidad base, repartida entre lotes (abiertos, fecha más próxima, compra más antigua) o de un lote concreto. Idempotente. Señala residuos inferiores al 2 % del envase. |
+| `ajustar_cantidad` | Corrección de la cantidad de un lote con motivo; con 0 y motivo «residuo» marca un resto como agotado. |
+| `deshacer_evento` | Revierte un consumo, desperdicio o ajuste con movimientos `correccion` que referencian a los originales. No se puede deshacer dos veces ni si la cantidad ya se ha consumido después. |
+
+Los movimientos y eventos guardan la hora exacta de registro (`clock_timestamp()`), para que el historial conserve el orden de los movimientos de una misma operación.
+
 ### 4.1 Confirmar ticket
 
 ```

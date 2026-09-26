@@ -10,8 +10,8 @@ Fase actual: **F0, fundamentos** (ver `docs/01-especificacion-tecnica.md`, secci
 |---|---|---|
 | Especificación, requisitos, pantallas y decisiones | Documentado | `docs/` |
 | Reglas de negocio (cantidades, consumos parciales, lotes, energía, nutrición, recetas, líneas de ticket) | Implementado y probado, todavía sin pantallas que lo usen | `paquetes/dominio/` |
-| Base de datos para Supabase: esquema, aislamiento por usuario, alta de cuentas, edad mínima, consentimientos | Implementado y probado; pendiente de desplegar en un proyecto real | `supabase/` |
-| App móvil: registro, verificación de correo, inicio y cierre de sesión, recuperación de contraseña, navegación | Implementado y probado con Supabase simulado; pendiente de probar contra un proyecto real y en dispositivos | `apps/movil/` |
+| Base de datos para Supabase: esquema, aislamiento por usuario, alta de cuentas, edad mínima, consentimientos | Implementado, probado y desplegado en el proyecto de Supabase (Fráncfort) | `supabase/` |
+| App móvil: registro, verificación de correo, inicio y cierre de sesión, recuperación de contraseña, navegación | Implementado. Probado el 26/09/2026 en un iPhone 16 Pro con Expo Go contra el proyecto real: registro, verificación del correo e inicio de sesión correctos | `apps/movil/` |
 | Inicio de sesión con Apple y Google | Pendiente: requiere cuentas de desarrollador | — |
 | Despensa, tickets, nutrición, recetas, progreso | Pendiente (fases F1 a F6) | — |
 | Exportación de datos y eliminación de cuenta | Pendiente (fase F7, antes del lanzamiento) | — |
@@ -41,7 +41,7 @@ Pruebas de la base de datos y de extremo a extremo: ver `supabase/README.md` y `
 
 ## Lo que necesita el propietario para avanzar
 
-1. Crear el proyecto de Supabase siguiendo `supabase/README.md` y rellenar `apps/movil/.env`.
+1. Hecho: proyecto de Supabase creado y app probada en iPhone.
 2. Las demás tareas (cuenta de Anthropic, tickets de evaluación, cuentas de Apple y Google, revisión legal) están al final de `docs/09-decisiones.md`.
 
 ## Aviso

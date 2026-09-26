@@ -1,14 +1,23 @@
-// Cliente de Supabase. La URL y la clave pública del proyecto se leen de las variables de
-// entorno EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_KEY (ver apps/movil/.env.example).
-// La clave pública solo permite lo que autorizan las políticas de la base de datos.
+// Cliente de Supabase.
+//
+// Proyecto de FoodApp (región UE, Fráncfort). La URL y la clave publicable son públicas por
+// diseño: viajan dentro de la app instalada y solo permiten lo que autorizan las políticas de
+// seguridad de la base de datos. Nunca se pone aquí la clave secreta (service_role).
+// Las variables EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_KEY, si existen, tienen
+// prioridad (por ejemplo, para apuntar a un proyecto local o de pruebas).
 
 import 'react-native-url-polyfill/auto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 import { almacenamientoSesion } from './almacenamientoSesion';
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const clavePublica = process.env.EXPO_PUBLIC_SUPABASE_KEY;
+const PROYECTO = {
+  url: 'https://jepnoulrnrojnwmwvaip.supabase.co',
+  clavePublicable: 'sb_publishable_vKAg57Brolw2ioDqegC60Q_tZAqZSEn',
+};
+
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL || PROYECTO.url;
+const clavePublica = process.env.EXPO_PUBLIC_SUPABASE_KEY || PROYECTO.clavePublicable;
 
 export const supabaseConfigurado = Boolean(url && clavePublica);
 

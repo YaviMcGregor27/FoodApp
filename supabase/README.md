@@ -43,7 +43,7 @@ Pasos para el propietario; requieren una cuenta de Supabase.
 
 ### Estado del proyecto alojado
 
-- 26/09/2026: proyecto creado en Frankfurt. La migración `20260925000000_esquema_inicial.sql` se aplicó a mano desde el *SQL Editor* del panel (con la opción *Run and enable RLS*); la comprobación dio 23 tablas, 2 disparadores y 0 tablas sin RLS.
+- 26/09/2026: proyecto `jepnoulrnrojnwmwvaip` creado en Frankfurt; la app apunta a él (`apps/movil/src/lib/supabase.ts`, solo URL y clave publicable). Ajustes de autenticación hechos en el panel: verificación de correo activada, contraseña mínima de 12 caracteres, Site URL `foodapp://` y redirecciones `foodapp://**` y `exp://**`. La migración `20260925000000_esquema_inicial.sql` se aplicó a mano desde el *SQL Editor* del panel (con la opción *Run and enable RLS*); la comprobación dio 23 tablas, 2 disparadores y 0 tablas sin RLS.
 - Como no se aplicó con la CLI, antes del primer `supabase db push` hay que marcarla como aplicada para que no se repita:
 
   ```bash

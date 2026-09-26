@@ -20,12 +20,11 @@ Desde la raíz del repositorio:
 
 ```bash
 npm install
-cp apps/movil/.env.example apps/movil/.env   # y rellenar la URL y la clave pública de Supabase
 cd apps/movil
 npx expo start
 ```
 
-Se abre con la app Expo Go en el teléfono (escaneando el código QR) o en un emulador. Si Expo Go no incluyera algún módulo nativo, hay que usar una compilación de desarrollo (`npx eas-cli@latest build --profile development`). Sin el archivo `.env`, la app muestra un aviso de configuración pendiente.
+Se abre con la app Expo Go en el teléfono (escaneando el código QR) o en un emulador. Si Expo Go no incluyera algún módulo nativo, hay que usar una compilación de desarrollo (`npx eas-cli@latest build --profile development`). La app se conecta al proyecto de Supabase de FoodApp; para usar otro, crea `.env` a partir de `.env.example`.
 
 ## Comprobaciones
 
